@@ -1,0 +1,63 @@
+variables:
+  # Replace this name with that of the Azure service connection in your DevOps project
+  ConnectedServiceName: 'python-app-connection'
+
+  # Replace this name to match the name of the App Service you created earlier
+  WebAppName: 'dke-flaskpiplines'
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.6'
+    architecture: 'x64'
+
+# The | symbol is a continuation character, indicating a multi-line script.
+# A single-line script can immediately follows "- script:" without the |.
+- script: |
+    python3.6 -m venv .env
+    source .env/bin/activate
+    pip3.6 install setuptools
+    pip3.6 install -r requirements.txt
+
+  # The displayName is shows in the pipeline UI when a build runs
+  displayName: 'Install Dependencies on build agent'
+
+- script: |
+    # Commands to run tests   
+  displayName: 'Run tests'
+
+- script: |
+    echo Deleting .env
+    deactivate
+    rm -rf .env
+  displayName: 'Remove .env before zip'
+
+  
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip'
+    replaceExistingArchive: true
+    verbose: # (no value); this input is optional
+
+- task: AzureRMWebAppDeployment@4
+  displayName: Azure App Service Deploy
+  inputs:
+    appType: webAppLinux
+    RuntimeStack: 'PYTHON|3.6'
+    ConnectedServiceName: $(ConnectedServiceName)
+    WebAppName: $(WebAppName)
+    Package: '$(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip'
+
+    # The following parameter is specific to the Flask example code. You may
+    # or may not need a startup command for your own app.
+
+    StartupCommand: 'gunicorn --bind=0.0.0.0 --workers=4 startup:app'
