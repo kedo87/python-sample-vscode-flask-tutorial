@@ -17,6 +17,28 @@ steps:
     versionSpec: '3.6'
     architecture: 'x64'
 
+# The | symbol is a continuation character, indicating a multi-line script.
+# A single-line script can immediately follows "- script:" without the |.
+- script: |
+    python3.6 -m venv .env
+    source .env/bin/activate
+    pip3.6 install setuptools
+    pip3.6 install -r requirements.txt
+
+  # The displayName is shows in the pipeline UI when a build runs
+  displayName: 'Install Dependencies on build agent'
+
+- script: |
+    # Commands to run tests   
+  displayName: 'Run tests'
+
+- script: |
+    echo Deleting .env
+    deactivate
+    rm -rf .env
+  displayName: 'Remove .env before zip'
+
+  
 - task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.SourcesDirectory)'
